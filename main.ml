@@ -1,3 +1,7 @@
+(* This is an OCaml editor.
+   Enter your program here and send it to the toplevel using the "Eval code"
+   button or [Ctrl-e]. *)
+
 (*++++++++++++++++++++++++++++++++++++++*)
 (*  Interpretador para L1               *)
 (*   - inferência de tipos              *)
@@ -5,21 +9,41 @@
 (*++++++++++++++++++++++++++++++++++++++*)
 
 
-
 (**+++++++++++++++++++++++++++++++++++++++++*)
 (*  SINTAXE, AMBIENTE de TIPOS e de VALORES *)
 (*++++++++++++++++++++++++++++++++++++++++++*)
+
+(*
+Tipos a implementar:
+T ∈ Types
+T ::= . . . | maybe T | list T
+*)
 
 type tipo =
     TyInt
   | TyBool
   | TyFn of tipo * tipo
   | TyPair of tipo * tipo
-              
+  (* Novos *)
+  | TyMaybe of tipo
+  | TyList of tipo
+  
 
 type ident = string
 
+(*
+Expressões a implementar:
+e ∈ L1+
+e ::= . . .
+| nothing:T | just e | match e with nothing → e1 | just x → e2
+| nil:T | e1 :: e2 | match e with nil → e1 | x :: xs → e2
+| e1 |> e2
+*)
+  
+
 type op = Sum | Sub | Mult | Div | Eq | Gt | Lt | Geq | Leq 
+          (* Novos *)
+        | Conc | Pipe 
 
 type expr =
   | Num of int
@@ -34,13 +58,32 @@ type expr =
   | App of expr * expr
   | Let of ident * tipo * expr * expr
   | LetRec of ident * tipo * expr  * expr
+  (* Novos *)
+  | Nothing of tipo
+  | Just of expr
+  | MatchNothing of expr * expr * expr
+  | Nil of tipo
+  | MatchNil of expr * expr * expr
   
+              
+(*  
+Valores a implementar:
+v ∈ Values
+v ::= . . . | nothing:T | just v | nil:T | v1 :: v2
+*)
+
 type valor = 
     VNum of int
   | VBool of bool
   | VPair of valor * valor
   | VClos  of ident * expr * renv
   | VRClos of ident * ident * expr * renv 
+                                          (* Novos *)
+  | VNothing of tipo
+  | VJust of valor
+  | VNil of tipo
+  | VConc of valor * valor
+    
 and  
   renv = (ident * valor) list
               
@@ -52,8 +95,7 @@ type tenv = (ident * tipo) list
 exception BugParser
   
 
-  
-  (**+++++++++++++++++++++++++++++++++++++++++*)
+(**+++++++++++++++++++++++++++++++++++++++++*)
 (*         INFERÊNCIA DE TIPOS              *)
 (*++++++++++++++++++++++++++++++++++++++++++*)
 
@@ -253,3 +295,9 @@ let int_bse (e:expr) : unit =
   | BugTypeInfer  ->  print_string "corrigir bug em typeinfer"
   | BugParser     ->  print_string "corrigir bug no parser para let rec"
                         
+
+
+
+         
+
+               
