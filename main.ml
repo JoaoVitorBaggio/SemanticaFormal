@@ -61,9 +61,11 @@ type expr =
   (* Novos *)
   | Nothing of tipo
   | Just of expr
-  | MatchNothing of expr * expr * expr
+  | MatchNothing of expr * expr * ident * expr
   | Nil of tipo
   | MatchNil of expr * expr * expr
+  | List of expr * expr
+  | Pipe of expr * expr
   
               
 (*  
@@ -78,11 +80,12 @@ type valor =
   | VPair of valor * valor
   | VClos  of ident * expr * renv
   | VRClos of ident * ident * expr * renv 
-                                          (* Novos *)
+  (* Novos *)
   | VNothing of tipo
   | VJust of valor
   | VNil of tipo
   | VConc of valor * valor
+  | VList of valor * valor
     
 and  
   renv = (ident * valor) list
@@ -177,6 +180,27 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
       then typeinfer tenv_com_tf e2
       else raise (TypeError "tipo da funcao recursiva é diferente do declarado")
   | LetRec _ -> raise BugParser
+
+    (* Novos *)
+  
+    (* TNothing *)
+  | Nothing t -> TyMaybe t
+  
+    (* TJust *)
+  | Just e -> TyMaybe (typeinfer tenv e)
+                
+    (* TNil *)
+  | Nil t -> TyList t
+  
+    (* TMatchWithNothing *)
+  | MatchWithNothing(e,e1,x,e2) ->
+      (match typeinfer tenv e with
+         TyMaybe t' ->
+           let t1 = typeinfer tenv e1 in
+           let t2 = typeinfer ((x,t') :: tenv) e2
+           in if t1 = t2 then t1
+           else raise (TypeError "match com tipos distintos")
+       | _ -> raise (TypeError "tipo maybe esperado em match"))
                   
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
