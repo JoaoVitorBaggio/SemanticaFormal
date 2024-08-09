@@ -58,8 +58,7 @@ type expr =
   | MatchWithNothing  of expr * expr * ident * expr
   | Nil of tipo
   | MatchWithNil of expr * expr * ident * ident * expr
-  | List of expr * expr
-  | Push of expr * expr
+  | Cons of expr * expr
   | Pipe of expr * expr
               
 (*  
@@ -90,6 +89,10 @@ type tenv = (ident * tipo) list
 (* exceções que não devem ocorrer  *)
 
 exception BugParser
+
+(* Nova *)
+
+exception NaoImplementado of string
 
 
 (**+++++++++++++++++++++++++++++++++++++++++*)
@@ -182,11 +185,8 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
   
     (* TJust *)
   | Just e -> TyMaybe (typeinfer tenv e)
-                
-    (* TNil *)
-  | Nil t -> TyList t
   
-    (* TMatchWithNothing *)
+  (* TMatchWithNothing *)
   | MatchWithNothing(e,e1,x,e2) ->
       (match typeinfer tenv e with
          TyMaybe t' ->
@@ -195,27 +195,32 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
            in if t1 = t2 then t1
            else raise (TypeError "match com tipos distintos")
        | _ -> raise (TypeError "tipo maybe esperado em match"))
-
-    (* TPush *)
-  | Push (head, tail) ->
-    (match typeinfer tenv tail with
-      | TyList t -> 
-        if t = typeinfer tenv head 
-          then TyMaybe t
-          else raise (TypeError "tipo do push deve ser push e1:T e2:List T")
-      | _ -> raise (TypeError "segundo argumento do push deve ser uma lista"))
+    
+  (* TNil *)
+  | Nil t -> TyList t
+    
+    (* TCons *)
+  | Cons (head, tail) ->
+      (match typeinfer tenv tail with
+       | TyList t -> 
+           if t = typeinfer tenv head 
+           then TyMaybe t
+           else raise (TypeError "tipo do segundo argumento de cons deve ser lista do tipo do tipo do primeiro argumento")
+       | _ -> raise (TypeError "segundo argumento do cons deve ser uma lista"))
     
     (* TMatchWithNil *)
   | MatchWithNil (lista, e1, xhead, xtail, e2) ->
-   (match typeinfer tenv lista with 
-   | TyList t -> 
-    let t1 = typeinfer tenv e1
-    let t2 = typeinfer ((xhead, t) :: (xtail, TyList t) :: tenv)
-    if t1 = t2 
-      then t1 
-  else ...
-   | _ -> raise (TypeError "MatchWithNil espera que o primeiro argumento seja uma lista.")
-    ) 
+      (match typeinfer tenv lista with 
+       | TyList t -> 
+           let t1 = typeinfer tenv e1 in
+           let t2 = typeinfer ((xhead, t) :: (xtail, TyList t) :: tenv) e2 in
+           if t1 = t2
+           then t1 
+           else raise (TypeError "MatchWithNil espera duas expressões de mesmo tipo")
+       | _ -> raise (TypeError "MatchWithNil espera que o primeiro argumento seja uma lista.")
+      ) 
+
+  | Pipe (e, funcao) -> raise (NaoImplementado "'Pipe' não foi implementado")
 
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
@@ -227,15 +232,15 @@ exception BugTypeInfer
 
 let compute (oper: op) (v1: valor) (v2: valor) : valor =
   match (oper, v1, v2) with
-    (Sum, VNum(n1), VNum(n2)) -> VNum (n1 + n2)
-  | (Sub, VNum(n1), VNum(n2)) -> VNum (n1 - n2)
-  | (Mult, VNum(n1),VNum(n2)) -> VNum (n1 * n2) 
-  | (Div, VNum(n1),VNum(n2))  -> VNum (n1 / n2)    
-  | (Eq, VNum(n1), VNum(n2))  -> VBool (n1 = n2) 
-  | (Gt, VNum(n1), VNum(n2))  -> VBool (n1 > n2)  
-  | (Lt, VNum(n1), VNum(n2))  -> VBool (n1 < n2)  
-  | (Geq, VNum(n1), VNum(n2)) -> VBool (n1 >= n2) 
-  | (Leq, VNum(n1), VNum(n2)) -> VBool (n1 <= n2) 
+    (Sum,   VNum(n1), VNum(n2)) -> VNum   (n1 + n2)
+  | (Sub,   VNum(n1), VNum(n2)) -> VNum   (n1 - n2)
+  | (Mult,  VNum(n1), VNum(n2)) -> VNum   (n1 * n2) 
+  | (Div,   VNum(n1), VNum(n2)) -> VNum   (n1 / n2)    
+  | (Eq,    VNum(n1), VNum(n2)) -> VBool  (n1 = n2) 
+  | (Gt,    VNum(n1), VNum(n2)) -> VBool  (n1 > n2)  
+  | (Lt,    VNum(n1), VNum(n2)) -> VBool  (n1 < n2)  
+  | (Geq,   VNum(n1), VNum(n2)) -> VBool  (n1 >= n2) 
+  | (Leq,   VNum(n1), VNum(n2)) -> VBool  (n1 <= n2) 
   | _ -> raise BugTypeInfer
 
 
@@ -299,6 +304,37 @@ let rec eval (renv:renv) (e:expr) :valor =
         
         
   | LetRec _ -> raise BugParser 
+
+    (* Novos *)
+  
+  | Nothing t ->
+      raise (NaoImplementado "'Nothing' não foi implementado")
+  
+  | Just e ->
+      raise (NaoImplementado "'Just' não foi implementado")
+  
+  | MatchWithNothing(e,e1,x,e2) ->
+      raise (NaoImplementado "'MatchWithNothing' não foi implementado")
+    
+  | Nil t ->
+      VNil t
+    
+  | Cons (head, tail) ->
+      let vhead = eval renv head in
+      let vtail = eval renv tail in
+      VList (vhead, vtail)
+    
+  | MatchWithNil (lista, e1, xhead, xtail, e2) ->
+      let vlista = eval renv lista in
+      (match vlista with
+       | VNil _ -> eval renv e1
+       | VList (vhead, vtail) -> 
+           eval ((xhead, vhead) :: (xtail, vtail) :: renv) e2
+       | _ -> raise BugTypeInfer
+      )
+
+  | Pipe (e, funcao) ->
+      raise (NaoImplementado "'Pipe' não foi implementado")
                   
                   
 (* função auxiliar que converte tipo para string *)
@@ -309,6 +345,9 @@ let rec ttos (t:tipo) : string =
   | TyBool -> "bool"
   | TyFn(t1,t2)   ->  "("  ^ (ttos t1) ^ " --> " ^ (ttos t2) ^ ")"
   | TyPair(t1,t2) ->  "("  ^ (ttos t1) ^ " * "   ^ (ttos t2) ^ ")"
+  (* Novos *)
+  | TyMaybe t -> "maybe " ^ (ttos t)
+  | TyList t -> "list " ^ (ttos t)
 
 (* função auxiliar que converte valor para string *)
 
@@ -321,6 +360,11 @@ let rec vtos (v: valor) : string =
       "(" ^ vtos v1 ^ "," ^ vtos v1 ^ ")"
   | VClos _ ->  "fn"
   | VRClos _ -> "fn"
+  (* Novos *)
+  | VNothing _ -> "nothing"
+  | VJust v -> "just " ^ (vtos v)
+  | VNil _ -> "nil"
+  | VList (vh, vt) -> (vtos vh) ^ " :: " ^ (vtos vt)
 
 (* principal do interpretador *)
 
