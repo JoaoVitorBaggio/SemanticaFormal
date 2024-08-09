@@ -1,13 +1,9 @@
-(* This is an OCaml editor.
-   Enter your program here and send it to the toplevel using the "Eval code"
-   button or [Ctrl-e]. *)
 
 (*++++++++++++++++++++++++++++++++++++++*)
 (*  Interpretador para L1               *)
 (*   - inferência de tipos              *)
 (*   - avaliador big step com ambiente  *)
 (*++++++++++++++++++++++++++++++++++++++*)
-
 
 (**+++++++++++++++++++++++++++++++++++++++++*)
 (*  SINTAXE, AMBIENTE de TIPOS e de VALORES *)
@@ -20,14 +16,14 @@ T ::= . . . | maybe T | list T
 *)
 
 type tipo =
-    TyInt
+  | TyInt
   | TyBool
   | TyFn of tipo * tipo
   | TyPair of tipo * tipo
   (* Novos *)
   | TyMaybe of tipo
   | TyList of tipo
-  
+
 
 type ident = string
 
@@ -39,11 +35,9 @@ e ::= . . .
 | nil:T | e1 :: e2 | match e with nil → e1 | x :: xs → e2
 | e1 |> e2
 *)
-  
+
 
 type op = Sum | Sub | Mult | Div | Eq | Gt | Lt | Geq | Leq 
-          (* Novos *)
-        | Conc | Pipe 
 
 type expr =
   | Num of int
@@ -61,12 +55,12 @@ type expr =
   (* Novos *)
   | Nothing of tipo
   | Just of expr
-  | MatchNothing of expr * expr * ident * expr
+  | MatchWithNothing  of expr * expr * ident * expr
   | Nil of tipo
-  | MatchNil of expr * expr * expr
+  | MatchWithNil of expr * expr * ident * ident * expr
   | List of expr * expr
+  | Push of expr * expr
   | Pipe of expr * expr
-  
               
 (*  
 Valores a implementar:
@@ -84,9 +78,9 @@ type valor =
   | VNothing of tipo
   | VJust of valor
   | VNil of tipo
-  | VConc of valor * valor
   | VList of valor * valor
-    
+  
+  
 and  
   renv = (ident * valor) list
               
@@ -96,7 +90,7 @@ type tenv = (ident * tipo) list
 (* exceções que não devem ocorrer  *)
 
 exception BugParser
-  
+
 
 (**+++++++++++++++++++++++++++++++++++++++++*)
 (*         INFERÊNCIA DE TIPOS              *)
@@ -201,7 +195,28 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
            in if t1 = t2 then t1
            else raise (TypeError "match com tipos distintos")
        | _ -> raise (TypeError "tipo maybe esperado em match"))
-                  
+
+    (* TPush *)
+  | Push (head, tail) ->
+    (match typeinfer tenv tail with
+      | TyList t -> 
+        if t = typeinfer tenv head 
+          then TyMaybe t
+          else raise (TypeError "tipo do push deve ser push e1:T e2:List T")
+      | _ -> raise (TypeError "segundo argumento do push deve ser uma lista"))
+    
+    (* TMatchWithNil *)
+  | MatchWithNil (lista, e1, xhead, xtail, e2) ->
+   (match typeinfer tenv lista with 
+   | TyList t -> 
+    let t1 = typeinfer tenv e1
+    let t2 = typeinfer ((xhead, t) :: (xtail, TyList t) :: tenv)
+    if t1 = t2 
+      then t1 
+  else ...
+   | _ -> raise (TypeError "MatchWithNil espera que o primeiro argumento seja uma lista.")
+    ) 
+
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
 (*                 AVALIADOR                *)
@@ -318,10 +333,3 @@ let int_bse (e:expr) : unit =
     TypeError msg ->  print_string ("erro de tipo - " ^ msg) 
   | BugTypeInfer  ->  print_string "corrigir bug em typeinfer"
   | BugParser     ->  print_string "corrigir bug no parser para let rec"
-                        
-
-
-
-         
-
-               
