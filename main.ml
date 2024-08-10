@@ -380,8 +380,3 @@ let int_bse (e:expr) : unit =
   (* Novos *)
   | NaoImplementado msg   -> print_string ("erro: " ^ msg ^ "não implementado")
 ;;
-
-(* chamada *)
-int_bse(
-  MatchWithNil (Cons(Num 6, Cons(Num 3, Nil TyInt)))
-)
