@@ -218,9 +218,14 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
            then t1 
            else raise (TypeError "MatchWithNil espera duas expressões de mesmo tipo")
        | _ -> raise (TypeError "MatchWithNil espera que o primeiro argumento seja uma lista.")
-      ) 
-
-  | Pipe (e, funcao) -> raise (NaoImplementado "'Pipe'")
+      )
+      
+      (* TPipe *)
+  | Pipe (e, funcao) ->
+    (match typeinfer tenv funcao with
+       TyFn(t, t') ->  if (typeinfer tenv e) = t then t'
+         else raise (TypeError "tipo argumento errado" )
+     | _ -> raise (TypeError "tipo função era esperado"))
 
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
@@ -308,13 +313,13 @@ let rec eval (renv:renv) (e:expr) :valor =
     (* Novos *)
   
   | Nothing t ->
-      raise (NaoImplementado "'Nothing'")
+      raise (NaoImplementado "Nothing")
   
   | Just e ->
-      raise (NaoImplementado "'Just'")
+      raise (NaoImplementado "Just")
   
   | MatchWithNothing(e,e1,x,e2) ->
-      raise (NaoImplementado "'MatchWithNothing'")
+      raise (NaoImplementado "MatchWithNothing")
     
   | Nil t ->
       VNil t
@@ -334,7 +339,14 @@ let rec eval (renv:renv) (e:expr) :valor =
       )
 
   | Pipe (e, funcao) ->
-      raise (NaoImplementado "'Pipe'")
+    let vf  = eval renv funcao  in
+    let v   = eval renv e       in
+    (match vf with 
+       VClos(   x,e',renv') ->
+         eval  (         (x,v) :: renv')  e' 
+     | VRClos(f,x,e',renv') -> 
+         eval  ((f,vf) ::(x,v) :: renv')  e' 
+     | _  -> raise BugTypeInfer) 
                   
                   
 (* função auxiliar que converte tipo para string *)
@@ -378,5 +390,5 @@ let int_bse (e:expr) : unit =
   | BugTypeInfer          ->  print_string "corrigir bug em typeinfer"
   | BugParser             ->  print_string "corrigir bug no parser para let rec"
   (* Novos *)
-  | NaoImplementado msg   -> print_string ("erro: " ^ msg ^ "não implementado")
+  | NaoImplementado msg   -> print_string ("erro: '" ^ msg ^ "' não implementado")
 ;;
