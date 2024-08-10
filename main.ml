@@ -204,7 +204,7 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
       (match typeinfer tenv tail with
        | TyList t -> 
            if t = typeinfer tenv head 
-           then TyMaybe t
+           then TyList t
            else raise (TypeError "tipo do segundo argumento de cons deve ser lista do tipo do tipo do primeiro argumento")
        | _ -> raise (TypeError "segundo argumento do cons deve ser uma lista"))
     
@@ -220,7 +220,7 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
        | _ -> raise (TypeError "MatchWithNil espera que o primeiro argumento seja uma lista.")
       ) 
 
-  | Pipe (e, funcao) -> raise (NaoImplementado "'Pipe' não foi implementado")
+  | Pipe (e, funcao) -> raise (NaoImplementado "'Pipe'")
 
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
@@ -308,13 +308,13 @@ let rec eval (renv:renv) (e:expr) :valor =
     (* Novos *)
   
   | Nothing t ->
-      raise (NaoImplementado "'Nothing' não foi implementado")
+      raise (NaoImplementado "'Nothing'")
   
   | Just e ->
-      raise (NaoImplementado "'Just' não foi implementado")
+      raise (NaoImplementado "'Just'")
   
   | MatchWithNothing(e,e1,x,e2) ->
-      raise (NaoImplementado "'MatchWithNothing' não foi implementado")
+      raise (NaoImplementado "'MatchWithNothing'")
     
   | Nil t ->
       VNil t
@@ -334,7 +334,7 @@ let rec eval (renv:renv) (e:expr) :valor =
       )
 
   | Pipe (e, funcao) ->
-      raise (NaoImplementado "'Pipe' não foi implementado")
+      raise (NaoImplementado "'Pipe'")
                   
                   
 (* função auxiliar que converte tipo para string *)
@@ -374,9 +374,14 @@ let int_bse (e:expr) : unit =
     let v = eval [] e
     in  print_string ((vtos v) ^ " : " ^ (ttos t))
   with
-    TypeError msg ->  print_string ("erro de tipo - " ^ msg) 
-  | BugTypeInfer  ->  print_string "corrigir bug em typeinfer"
-  | BugParser     ->  print_string "corrigir bug no parser para let rec"
+    TypeError msg         ->  print_string ("erro de tipo - " ^ msg) 
+  | BugTypeInfer          ->  print_string "corrigir bug em typeinfer"
+  | BugParser             ->  print_string "corrigir bug no parser para let rec"
+  (* Novos *)
+  | NaoImplementado msg   -> print_string ("erro: " ^ msg ^ "não implementado")
+;;
 
-  (* chamada *)
-
+(* chamada *)
+int_bse(
+  MatchWithNil (Cons(Num 6, Cons(Num 3, Nil TyInt)))
+)
