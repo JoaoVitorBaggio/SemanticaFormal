@@ -60,6 +60,7 @@ type expr =
   | MatchWithNil of expr * expr * ident * ident * expr
   | Cons of expr * expr
   | Pipe of expr * expr
+  | List of expr * expr 
               
 (*  
 Valores a implementar:
@@ -227,6 +228,14 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
          else raise (TypeError "tipo argumento errado" )
      | _ -> raise (TypeError "tipo função era esperado"))
 
+      (* TList *)
+  | List(e1,e2) ->
+    let t1 = typeinfer tenv e1 in
+    let t2 = typeinfer tenv e2 in
+    (match t2 with
+       TyList t' when t1 = t' -> TyList t1
+     | _ -> raise (TypeError "lista possui tipos diferentes"))
+
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
 (*                 AVALIADOR                *)
@@ -312,14 +321,18 @@ let rec eval (renv:renv) (e:expr) :valor =
 
     (* Novos *)
   
-  | Nothing t ->
-      raise (NaoImplementado "Nothing")
+  | Nothing t -> VNothing t
   
-  | Just e ->
-      raise (NaoImplementado "Just")
+  | Just e -> 
+      let v = eval renv e 
+      in VJust v
   
   | MatchWithNothing(e,e1,x,e2) ->
-      raise (NaoImplementado "MatchWithNothing")
+    let v' = eval renv e in
+    (match v' with
+        VNothing _ -> eval renv e1
+      | VJust v -> eval ((x,v) :: renv) e2
+      | _ -> raise BugTypeInfer)
     
   | Nil t ->
       VNil t
