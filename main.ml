@@ -60,7 +60,6 @@ type expr =
   | MatchWithNil of expr * expr * ident * ident * expr
   | Cons of expr * expr
   | Pipe of expr * expr
-  | List of expr * expr 
               
 (*  
 Valores a implementar:
@@ -227,14 +226,6 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
        TyFn(t, t') ->  if (typeinfer tenv e) = t then t'
          else raise (TypeError "tipo argumento errado" )
      | _ -> raise (TypeError "tipo função era esperado"))
-
-      (* TList *)
-  | List(e1,e2) ->
-    let t1 = typeinfer tenv e1 in
-    let t2 = typeinfer tenv e2 in
-    (match t2 with
-       TyList t' when t1 = t' -> TyList t1
-     | _ -> raise (TypeError "lista possui tipos diferentes"))
 
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
